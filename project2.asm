@@ -1,5 +1,5 @@
 .data
-file: .asciiz "loz_title.mid" # cwd is the location of the jar
+file: .asciiz "MIPS-MIDI-player/loz_title.mid" # cwd is the location of the jar
 .text
 
 main:
@@ -45,15 +45,6 @@ parse_header:
     move $s7, $a0                # load file descriptor
 
     # Read in chunk size
-    li $v0, 14                   # load read file system call
-    move $a0, $s7                # load file descriptor
-    addi $sp, $sp, -4            # allocate space for len buffer
-    la $a1, 0($sp)               # load len buffer
-    li $a2, 2                    # max input size (4 bytes)
-    syscall                      # read file syscall
-
-    lw $s0, 0($sp)               # load len buffer data into $s0
-    addi $sp, $sp, 4             # deallocate len buffer
 
     # Read in track quantity and time division
     li $v0, 14                   # load read file system call
@@ -134,14 +125,19 @@ read_word:
 # $a1 = amount of bytes to read
 # $v0 = address of first byte on heap
 read_bytes:
-    # Store $s0 and $s1 to be restored
-    addi $sp, $sp, -8
+    # Store $s* in stack to be restored
+    addi $sp, $sp, -24
     sw $s0, 0($sp)
     sw $s1, 4($sp)
+    sw $s4, 8($sp)
+    sw $s5, 12($sp)
+    sw $s6, 16($sp)
+    sw $s7, 20($sp)
 
     move $s7, $a0                # load file descriptor
     move $s6, $a1                # store byte amount in $s6 to use as counter in loop
     move $s5, $a1                # store byte amount in $s5 for later use
+    li $s4, 4 
 
     # Allocate space on heap and stack
     add $gp, $gp, $a1
@@ -161,8 +157,11 @@ rb_loop:
     lw $s0, 0($sp)               # load byte from stack into $s0
 
     sub $s1, $gp, $s6            # Calculate byte address on heap
+    divu $s6, $s4
+    mfhi $t0
+
     sb $s0, ($s1)                # store byte in heap
-    addi $s6, $s6, -1            # increment (-) byte counter
+    addi $s6, $s6, -1            # decrement byte counter
     j rb_loop                    
 
 rb_end:
@@ -172,6 +171,10 @@ rb_end:
     # Restore $s0 and $s1
     lw $s0, 0($sp)
     lw $s1, 4($sp)
-    addi $sp, $sp, 8
+    lw $s4, 8($sp)
+    lw $s5, 12($sp)
+    lw $s6, 16($sp)
+    lw $s7, 20($sp)
+    addi $sp, $sp, 24
 
     jr $ra                       # Return

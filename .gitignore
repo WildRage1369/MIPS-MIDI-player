@@ -1,4 +1,4 @@
-.norg
-.hex
-.mid
-.jar
+*.norg
+*.hex
+*.mid
+*.jar

@@ -1,5 +1,5 @@
 .data
-file: .asciiz "MIPS-MIDI-player/loz_title.mid" # cwd is the location of the jar
+    file: .asciiz "projects/MIPS-MIDI-player/loz_title.mid" # cwd is the location of the jar
 .text
 
 main:
@@ -77,6 +77,69 @@ parse_header:
     jr $ra
 
 # $a0 = file descriptor
+parse_event:
+    # Event format:
+    # var-len dtime, 4bit event type, 1byte param1, 1byte param2
+    # Store $s* in stack to be restored
+    addi $sp, $sp, -12
+    sw $s0, 0($sp)
+    sw $s7, 4($sp)
+    sw $ra, 8($sp)
+
+    # load arguments
+    move $s7, $a0
+
+    # Read in chunk size
+    move $a0, $s7
+    li $a1, 4                    # how many bytes to read
+    jal read_bytes
+    lw $t0, ($v0)                # load word into $t0
+    addi $gp, $gp, -4            # deallocate space on heap
+
+    # Read in delta time
+    jal parse_delta_time
+    move $s0, $v0
+
+    # restore $s* and $ra
+    lw $s7, 0($sp)
+    lw $s0, 4($sp)
+    lw $ra, 8($sp)
+    addi $sp, $sp, 12
+    jr $ra
+
+# $a0 = file descriptor
+# $v0 = delta time
+parse_delta_time:
+    # Store $s* in stack to be restored
+    addi $sp, $sp, -16
+    sw $s0, 0($sp)
+    sw $s1, 4($sp)
+    sw $s7, 8($sp)
+    sw $ra, 12($sp)
+
+    li $s1 0                     # counter in loop
+pdt_loop:
+    beq $s0, $zero, pdt_end      # MSB in byte is 0
+    # Read in byte
+    move $a0, $s7
+    li $a1, 1                    # how many bytes to read
+    jal read_bytes
+    lw $t0, ($v0)                # load word into $t0
+    andi $s0, $t0, 0x80          # mask and store MSB in $s0
+    andi $t0, $t0, 0x7F          # mask out MSB
+
+pdt_end:
+    sub $gp, $gp, $s1            # deallocate space on heap
+
+    # restore $s* and $ra
+    lw $s0, 0($sp)
+    sw $s1, 4($sp)
+    lw $s7, 8($sp)
+    lw $ra, 12($sp)
+    addi $sp, $sp, 16
+    jr $ra
+
+# $a0 = file descriptor
 # $a1 = amount of bytes to read
 # $v0 = address of last byte on heap
 read_bytes:
@@ -101,7 +164,7 @@ read_bytes:
     add $gp, $gp, $a1
     addi $sp, $sp, -4
 
-    # For each byte to read
+# For each byte to read
 rb_loop:
     blt $s6, $s3,  rb_end        # if amount of bytes to read is 0, return
 

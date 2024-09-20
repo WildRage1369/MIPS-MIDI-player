@@ -13,14 +13,14 @@ main:
 while_loop:
 
     move $a0, $s7                # load file descriptor
-    li $a1, 8                    # how many bytes to read
+    li $a1, 4                    # how many bytes to read
     jal read_bytes               # call read_bytes
     lw $s0, ($v0)                # load word
 
     beq $s0 $zero, end_of_file   # goto end_of_file if at eof
     move $a0, $s7                # load file descriptor
 
-    li $s1, 0x6468544d           # load Header Chunk id
+    li $s1, 0x4d546864           # load Header Chunk id
     bne $s1, $s0, cond_1_f       # branch if equal: goto parse_header
     la $s6, parse_header
     jalr $s6
@@ -64,64 +64,6 @@ parse_header:
 
 # $a0 = file descriptor
 # $v0 = word
-read_word:
-    # Store $s0 and $s1 to be restored
-    addi $sp, $sp, -8
-    sw $s0, 0($sp)
-    sw $s1, 4($sp)
-
-    move $s7 $a0                 # load file descriptor
-    addi $sp, $sp, -4            # allocate space for buffer
-
-    li $v0, 14                   # load open file system call
-    move $a0, $s7                # load file descriptor
-    la $a1, 0($sp)               # load buffer
-    li $a2, 1                    # max input size (1 byte)
-    syscall                      # read byte 1
-
-    lw $s0, 0($sp)               # load byte 1 into $s0
-    sll $v1, $s0, 24             # shift byte 1 left 3 bytes (0xXX00 0000)
-
-    li $v0, 14                   # load open file system call
-    move $a0, $s7                # load file descriptor
-    la $a1, 0($sp)               # load buffer
-    li $a2, 1                    # max input size (1 byte)
-    syscall                      # read byte 2
-
-    lw $s0, 0($sp)               # load byte 2 into $s0
-    sll $s0, $s0, 16             # shift byte 2 left 2 bytes
-    or $v1, $v1, $s0             # combine buffer data (0xXXXX 0000)
-
-    li $v0, 14                   # load open file system call
-    move $a0, $s7                # load file descriptor
-    la $a1, 0($sp)               # load buffer
-    li $a2, 1                    # max input size (1 byte)
-    syscall                      # read byte 3
-
-    lw $s0, 0($sp)               # load byte 3 into $s0
-    sll $s0, $s0, 8              # shift byte 3 left 1 byte
-    or $v1, $v1, $s0             # combine buffer data (0xXXXX XX00)
-
-    li $v0, 14                   # load open file system call
-    move $a0, $s7                # load file descriptor
-    la $a1, 0($sp)               # load buffer
-    li $a2, 1                    # max input size (1 byte)
-    syscall                      # read byte 4
-
-    lw $s0, 0($sp)               # load byte 4 into $s0
-    or $v1, $v1, $s0             # combine buffer data (0xXXXX XXXX)
-    move $v0, $v1                # return word
-
-    addi $sp, $sp, 4             # deallocate buffer
-
-    # Restore $s0 and $s1
-    lw $s0, 0($sp)
-    lw $s1, 4($sp)
-    addi $sp, $sp, 8
-
-    jr $ra                       # Return
-
-# $a0 = file descriptor
 # $a1 = amount of bytes to read
 # $v0 = address of last byte on heap
 read_bytes:

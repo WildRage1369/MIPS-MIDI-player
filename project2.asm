@@ -123,21 +123,23 @@ read_word:
 
 # $a0 = file descriptor
 # $a1 = amount of bytes to read
-# $v0 = address of first byte on heap
+# $v0 = address of last byte on heap
 read_bytes:
     # Store $s* in stack to be restored
-    addi $sp, $sp, -24
+    addi $sp, $sp, -28
     sw $s0, 0($sp)
     sw $s1, 4($sp)
-    sw $s4, 8($sp)
-    sw $s5, 12($sp)
-    sw $s6, 16($sp)
-    sw $s7, 20($sp)
+    sw $s3, 8($sp)
+    sw $s4, 12($sp)
+    sw $s5, 16($sp)
+    sw $s6, 20($sp)
+    sw $s7, 24($sp)
 
     move $s7, $a0                # load file descriptor
     move $s6, $a1                # store byte amount in $s6 to use as counter in loop
     move $s5, $a1                # store byte amount in $s5 for later use
     li $s4, 4 
+    li $s3, 1
 
     # Allocate space on heap and stack
     add $gp, $gp, $a1
@@ -145,36 +147,33 @@ read_bytes:
 
     # For each byte to read
 rb_loop:
-    beq $s6, $zero,  rb_end      # if amount of bytes to read is 0, return
+    blt $s6, $s3,  rb_end      # if amount of bytes to read is 0, return
 
     # Read in byte
     li $v0, 14                   
     move $a0, $s7                
     la $a1, 0($sp)               
     li $a2, 1                    # max input size (1 byte)
-    syscall                      
+    syscall
 
     lw $s0, 0($sp)               # load byte from stack into $s0
 
-    sub $s1, $gp, $s6            # Calculate byte address on heap
-    divu $s6, $s4
-    mfhi $t0
-
+    sub $s1, $gp, $s3            # Calculate byte address on heap
     sb $s0, ($s1)                # store byte in heap
-    addi $s6, $s6, -1            # decrement byte counter
-    j rb_loop                    
+    addi $s3, $s3, 1             # increment byte counter
+    j rb_loop
 
 rb_end:
-    la $v0, ($gp)             # Return address to first byte on heap
-    add $v0, $v0, $s5         # Add offset to return address
+    la $v0, ($s1)             # Return address to last byte on heap
 
     # Restore $s0 and $s1
     lw $s0, 0($sp)
     lw $s1, 4($sp)
-    lw $s4, 8($sp)
-    lw $s5, 12($sp)
-    lw $s6, 16($sp)
-    lw $s7, 20($sp)
-    addi $sp, $sp, 24
+    lw $s3, 8($sp)
+    lw $s4, 12($sp)
+    lw $s5, 16($sp)
+    lw $s6, 20($sp)
+    lw $s7, 24($sp)
+    addi $sp, $sp, 28
 
     jr $ra                       # Return

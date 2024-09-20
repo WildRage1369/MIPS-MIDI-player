@@ -25,7 +25,7 @@ while_loop:
     bne $s1, $s0, cond_1_f       # branch if not equal: skip header
     jal parse_header
     move $s2, $v0                # store track quantity
-    move $s3, $v1               # store time division
+    move $s3, $v1                # store time division
 cond_1_f:
 
     j while_loop
@@ -69,11 +69,12 @@ parse_header:
     srl $v0, $v0, 16             # shift track quantity to the right
     andi $v1, $t1, 0x0000FFFF    # mask out time division
 
-    lw $s7, 0($sp)               # restore $s7
-    lw $s0, 4($sp)               # restore $s0
-    lw $ra, 8($sp)               # restore $ra
-    addi $sp, $sp, 12            # deallocate stack
-    jr $ra                       # return
+    # restore $s* and $ra
+    lw $s7, 0($sp)
+    lw $s0, 4($sp)
+    lw $ra, 8($sp)
+    addi $sp, $sp, 12
+    jr $ra
 
 # $a0 = file descriptor
 # $a1 = amount of bytes to read
@@ -102,7 +103,7 @@ read_bytes:
 
     # For each byte to read
 rb_loop:
-    blt $s6, $s3,  rb_end      # if amount of bytes to read is 0, return
+    blt $s6, $s3,  rb_end        # if amount of bytes to read is 0, return
 
     # Read in byte
     li $v0, 14                   
@@ -122,7 +123,7 @@ rb_end:
     addi $sp $sp, 4              # deallocate space on stack
     move $v0, $s1                # Return address to last byte on heap
 
-    # Restore $s0 and $s1
+    # Restore $s* and $ra
     lw $s0, 0($sp)
     lw $s1, 4($sp)
     lw $s3, 8($sp)

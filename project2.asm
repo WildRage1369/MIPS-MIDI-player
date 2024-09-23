@@ -108,6 +108,7 @@ parse_event:
     jr $ra
 
 # $a0 = file descriptor
+# $a1 = ms/tick
 # $v0 = delta time
 parse_delta_time:
     # Store $s* in stack to be restored
@@ -118,18 +119,30 @@ parse_delta_time:
     sw $ra, 12($sp)
 
     li $s1 0                     # counter in loop
+    move $sp, $fp
 pdt_loop:
-    beq $s0, $zero, pdt_end      # MSB in byte is 0
     # Read in byte
     move $a0, $s7
     li $a1, 1                    # how many bytes to read
     jal read_bytes
     lw $t0, ($v0)                # load word into $t0
+    sub $gp, $gp, 1              # deallocate space on heap
     andi $s0, $t0, 0x80          # mask and store MSB in $s0
     andi $t0, $t0, 0x7F          # mask out MSB
+    addi $sp, $sp, -1            # allocate space in stack
+    sb $t0, 0($sp)               # store dtime on stack
 
+    addi $s1, $s1, 1             # increment counter
+    beq $s0, $zero, pdt_end      # if MSB in byte is 0
 pdt_end:
-    sub $gp, $gp, $s1            # deallocate space on heap
+    lw $t0, ($fp)                # load dtime from stack
+    add $sp, $sp, $s1            # deallocate space on stack
+
+    addi $t1, $sp, 32            # calculate shift amount
+    srl $t0, $t0, $t1            # shift dtime to be in LSB
+
+    multu $t0, $a1               # multiply dtime by ms/tick
+    mflo $v0                     # return dtime in ms
 
     # restore $s* and $ra
     lw $s0, 0($sp)
@@ -137,6 +150,17 @@ pdt_end:
     lw $s7, 8($sp)
     lw $ra, 12($sp)
     addi $sp, $sp, 16
+    jr $ra
+
+# $a0 = bpm (beats per minute)
+# $a1 = ppq (pulses per quarter note)
+calc_ms_tick:
+    # calculate ms/tick
+    multu $a1, $a2               # multiply bpm by ppq
+    mflo $s0                     # store remainder in $s0
+    li $t1, 60000
+    divu $t1, $s0 
+    mflo $v0                     # store ms/tick in $s0
     jr $ra
 
 # $a0 = file descriptor
